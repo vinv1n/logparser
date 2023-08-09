@@ -6,6 +6,7 @@ use glob::glob;
 use serde::Serialize;
 use log::{info, warn};
 use std::io::ErrorKind;
+use std::fmt::Display;
 
 use crate::parser_config::parser_config::ParserConfig;
 use crate::decompressors::decompress::{Decompressor, Decompress};
@@ -33,6 +34,14 @@ impl FromStr for LogLevel {
         }
     }
 }
+
+impl Display for LogLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // maybe someday make better formating for this
+        write!(f, "{:?}", self)
+    }
+}
+
 
 #[derive(Debug)]
 struct FileEntry{
@@ -63,12 +72,21 @@ impl Event {
         };
     }
 
+    #[allow(dead_code)]
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 
+    #[allow(dead_code)]
     pub fn to_yaml(&self) -> String {
         serde_yaml::to_string(self).unwrap()
+    }
+}
+
+
+impl Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{} - {}", self.timestamp, self.level, self.message)
     }
 }
 

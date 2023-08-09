@@ -24,5 +24,12 @@ serde_json = "1.0.104"
 flexi_logger = "0.25.6"
 # Apache-2.0 / MIT
 log = "0.4"
+
+# here are the compression libs
+
 # Apache-2.0 / MIT
 flate2 = "1.0.26"
+# MIT
+zip = {version = "0.6.6", default-features = false, features = ["deflate"] }
+# MIT
+lz4_flex = { version = "0.11", default-features = false }

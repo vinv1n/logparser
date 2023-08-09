@@ -1,4 +1,5 @@
 use std::{fs::{OpenOptions, File}, str::FromStr};
+use std::fmt::Display;
 use chrono::DateTime;
 use serde::{Serialize, Deserialize};
 use regex::Regex;
@@ -65,5 +66,19 @@ impl ParserConfig {
             Err(e) => panic!("Could not parse datetime, error {:?}", e)
         };
         return date.timestamp();
+    }
+}
+
+
+impl Display for ParserConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Timestamp format: {}, Compression format: {:?}, Message pattern: {}, Logfile pattern: {}",
+            self.timestamp_format,
+            self.compression,
+            self.message_pattern,
+            self.logfile_pattern
+        )
     }
 }

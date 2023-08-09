@@ -3,21 +3,32 @@ use std::str::FromStr;
 use std::fs::File;
 use std::io::BufReader;
 use serde::{Serialize, Deserialize};
-use flate2::write::GzDecoder;
+use flate2::write::{GzDecoder, ZlibDecoder};
+use zip::read::ZipArchive;
+use std::io::Cursor;
 use std::io::prelude::*;
 use std::str::from_utf8;
 use log;
 
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum CompressionFormat {
+    /* Make sure that as many formats are accepted as possible */
+    #[serde(alias="GZIP", alias="Gzip", alias="GZip")]
     GZIP,
+    #[serde(alias="TAR", alias="Tar")]
     TAR,
+    #[serde(alias="ZIP", alias="Zip")]
     ZIP,
+    #[serde(alias="LZ4", alias="Lz4")]
     LZ4,
+    #[serde(alias="ZLIB", alias="Zlib")]
     ZLIB,
-    None
+    #[serde(alias="NONE", alias="None")]
+    NONE
 }
+
 
 impl FromStr for CompressionFormat {
     type Err = ();
@@ -28,11 +39,12 @@ impl FromStr for CompressionFormat {
             "zip" => Ok(CompressionFormat::ZIP),
             "gzip" => Ok(CompressionFormat::GZIP),
             "zlib" => Ok(CompressionFormat::ZLIB),
-            "none" => Ok(CompressionFormat::None),
-            _ => Ok(CompressionFormat::None),
+            "none" => Ok(CompressionFormat::NONE),
+            _ => Ok(CompressionFormat::NONE),
         }
     }
 }
+
 
 /* Log file decompressor */
 #[derive(Debug)]
@@ -46,7 +58,16 @@ fn decompress_lz4(bytes: &[u8]) -> Vec<u8> {
 }
 
 fn decompress_zlib(bytes: &[u8]) -> Vec<u8>{
-    return bytes.to_vec();
+    let mut writer = Vec::new();
+    let mut decoder = ZlibDecoder::new(writer);
+    // decode bytes into strings
+    decoder.write_all(&bytes).unwrap();
+    decoder.try_finish().unwrap();
+    writer = match decoder.finish() {
+        Ok(r) => r,
+        Err(e) => panic!("Could not decompress zlib file, error {:?}", e),
+    };
+    return writer;
 }
 
 fn decompress_gzip(bytes: &[u8]) -> Vec<u8> {
@@ -63,11 +84,21 @@ fn decompress_gzip(bytes: &[u8]) -> Vec<u8> {
 }
 
 fn decompress_zip(bytes: &[u8]) -> Vec<u8> {
-    return bytes.to_vec();
-}
-
-fn decompress_tar(bytes: &[u8]) -> Vec<u8> {
-    return bytes.to_vec();
+    /* 
+    This will now break horribly when multiple files are present in an archive please fix
+    Also this is slow as we need to iterate over all bytes when pushing them into the vector
+    */
+    let reader = Cursor::new(bytes.to_vec());
+    let mut zipfile = ZipArchive::new(reader).unwrap();
+    
+    let mut content: Vec<u8> = Vec::new();
+    for fileindex in 0..zipfile.len() {
+        let mut entry = zipfile.by_index(fileindex).unwrap();
+        log::debug!("Extracted {} file from zip archive", entry.name());
+        // horror
+        entry.read_to_end(&mut content).unwrap();
+    }
+    return content;
 }
 
 fn decompress_dummy(bytes: &[u8]) -> Vec<u8> {
@@ -82,8 +113,8 @@ impl Decompressor <'_> {
     pub fn decompress(&self, path: PathBuf) -> Vec<String>{
         let decompressor = match self.compression {
             CompressionFormat::LZ4 => decompress_lz4,
-            CompressionFormat::TAR => decompress_tar,
             CompressionFormat::ZLIB => decompress_zlib,
+            CompressionFormat::TAR => decompress_gzip,
             CompressionFormat::GZIP => decompress_gzip,
             CompressionFormat::ZIP => decompress_zip,
             _ => decompress_dummy,
