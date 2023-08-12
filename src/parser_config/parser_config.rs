@@ -12,6 +12,7 @@ use crate::decompressors::decompress::CompressionFormat;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ParserConfig {
     timestamp_format: String,
+    event_filter: String,
     pub compression: CompressionFormat,
     pub message_pattern: String,
     pub logfile_pattern: String
@@ -22,6 +23,7 @@ impl ParserConfig {
     pub fn new(compression: &str) -> ParserConfig {
         return ParserConfig{
             timestamp_format: String::new(),
+            event_filter: String::new(),
             compression: CompressionFormat::from_str(compression).unwrap(),
             message_pattern: String::new(),
             logfile_pattern: String::new()
@@ -38,7 +40,10 @@ impl ParserConfig {
 
     pub fn read_from_file(path: &str) -> ParserConfig {
         let file = File::open(path).unwrap();
-        let config: ParserConfig = serde_yaml::from_reader(file).expect("Could not read values.");
+        let config: ParserConfig = match serde_yaml::from_reader(file) {
+            Ok(c) => c,
+            Err(e) => panic!("Error while reading parser config. Error: {}", e)
+        };
         return config;
     }
 
@@ -66,7 +71,15 @@ impl ParserConfig {
             Ok(dt) => dt,
             Err(e) => panic!("Could not parse datetime, error {:?}", e)
         };
-        return date.timestamp();
+        date.timestamp()
+    }
+
+    pub fn filter_event(&self, event: &str) -> bool {
+        // make this regex pattern! at some point maybe
+        if !self.event_filter.is_empty() && event.contains(&self.event_filter) {
+            return true;
+        }
+        false
     }
 }
 

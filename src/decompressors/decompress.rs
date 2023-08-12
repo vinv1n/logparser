@@ -110,7 +110,7 @@ impl Decompressor <'_> {
         return Decompressor{compression: algo};
     }
 
-    pub fn decompress(&self, path: PathBuf) -> Vec<String>{
+    pub fn decompress(&self, path: PathBuf) -> Vec<String> {
         let decompressor = match self.compression {
             CompressionFormat::LZ4 => decompress_lz4,
             CompressionFormat::ZLIB => decompress_zlib,

@@ -17,6 +17,8 @@ pub enum LogLevel {
     Debug,
     Info,
     Warning,
+    Warn,
+    Critical,
     Error,
     Unknown
 }
@@ -30,6 +32,8 @@ impl FromStr for LogLevel {
             "warning" => Ok(LogLevel::Warning),
             "error" => Ok(LogLevel::Error),
             "debug" => Ok(LogLevel::Debug),
+            "critical" => Ok(LogLevel::Critical),
+            "warn" => Ok(LogLevel::Warn),
             _ => Ok(LogLevel::Unknown),
         }
     }
@@ -146,6 +150,8 @@ impl <'a> LogParser <'a> {
     }
 
     pub fn event_count(&self) -> usize {
+        // this is not that useful function, but makes size calls a bit more clean
+        // and removes a need to make events vector visible to scary outside world
         return self.events.len();
     }
 
@@ -192,6 +198,11 @@ impl <'a> LogParser <'a> {
             filecount += 1;
             for line in self.decompress_file(f.path) {
                 for entry in pattern.captures_iter(&line){
+                    let message = &entry["message"];
+                    if self.config.filter_event(message) {
+                        continue;
+                    }
+
                     let event = Event::new(
                         self.config.read_timestamp(&entry["timestamp"]),
                         &entry["message"],

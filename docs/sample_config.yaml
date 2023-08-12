@@ -2,3 +2,4 @@ timestamp_format: ''
 compression: "ZIP"
 message_pattern: '(?<timestamp>\d+):(?<loglevel>\w{4}):(?<message>\w+)'
 logfile_pattern: '*.zip'
+event_filter: ''
